@@ -15,7 +15,7 @@ photos_folder = folder / "photos"
 clubs_json_file = folder / "clubes.json"
 output_demo = folder / "demo.xml"
 
-num_nadadors = 50
+num_nadadors = 500
 num_campionats = 5
 sessions_per_campionat = (2, 4)  # min, max sessions per championship
 proves_per_sessio = (3, 6)       # min, max events per session
@@ -68,35 +68,44 @@ for i, estil_name in enumerate(estils):
     f_name = SubElement(rec, 'field', name='name')
     f_name.text = estil_name
 
-# --- CREAR NADADORS ---
+# --- CREAR NADADORS POR CLUB ---
+nadador_id = 1
+nadadors_per_club = {i: [] for i in range(1, num_clubs + 1)}
+
 for i in range(num_nadadors):
     sexo = random.choice(["M", "F"])
     nombre = random.choice(nombres_hombre if sexo == "M" else nombres_mujer)
     apellido = random.choice(apellidos)
     full_name = f"{nombre} {apellido}"
     any_naixement = random.randint(2005, 2015)
-    club_id = f"club_{random.randint(1, num_clubs)}"
+
+    club_id_num = (i % num_clubs) + 1
     categoria_id = f"categoria_{random.randint(1, num_categorias)}"
 
-    rec = SubElement(data, 'record', id=f'nadador_{i+1}', model='natacio.nadador')
-    f_name = SubElement(rec, 'field', name='name')
-    f_name.text = full_name
-    f_any = SubElement(rec, 'field', name='any_naixement')
-    f_any.text = str(any_naixement)
+    rec = SubElement(data, 'record', id=f'nadador_{nadador_id}', model='natacio.nadador')
+
+    nivel = random.uniform(0.7, 1.3)
+    SubElement(rec, 'field', name='nivel').text = str(nivel)
+    SubElement(rec, 'field', name='name').text = full_name
+    SubElement(rec, 'field', name='any_naixement').text = str(any_naixement)
     SubElement(rec, 'field', name='categoria_id', ref=categoria_id)
-    SubElement(rec, 'field', name='club_id', ref=club_id)
+    SubElement(rec, 'field', name='club_id', eval=f"ref('club_{club_id_num}')")
 
-    # Foto
-    foto_path = random.choice(photos) if photos else None
-    if foto_path:
-        with open(foto_path, "rb") as fp:
-            foto_b64 = base64.b64encode(fp.read()).decode("utf-8")
-            f_foto = SubElement(rec, 'field', name='foto')
-            f_foto.text = foto_b64
+    nadadors_per_club[club_id_num].append(nadador_id)
 
-    f_pag = SubElement(rec, 'field', name='data_ultim_pagament')
-    f_pag.text = f"2025-{random.randint(1,12):02d}-{random.randint(1, 28):02d}"
+def generar_tiempo(estil, distancia, nivel):
+    base_estil = {
+        "Crol": 1.00,
+        "Esquena": 1.08,
+        "Brasa": 1.20,
+        "Papallona": 1.10
+    }[estil]
 
+    ritmo_base = distancia * base_estil * 0.8
+    fatiga = random.uniform(0.95, 1.08)
+    error_humano = random.gauss(1.0, 0.03)
+
+    return round(ritmo_base * nivel * fatiga * error_humano + random.uniform(5, 20), 2)
 # --- CREAR CAMPIONATS ---
 campionat_names = [
     "Campionat Provincial de València",
@@ -124,7 +133,17 @@ for c in range(num_campionats):
     # Select random clubs participating (3-8 clubs)
     participating_clubs = random.sample(range(1, num_clubs + 1), min(random.randint(3, 8), num_clubs))
     # Select random nadadors inscribed (10-30 swimmers)
-    inscribed_nadadors = random.sample(range(1, num_nadadors + 1), min(random.randint(10, 30), num_nadadors))
+    inscribed_nadadors = []
+
+    for club_id in participating_clubs:
+        inscribed_nadadors += nadadors_per_club[club_id]
+
+    inscribed_nadadors = list(set(inscribed_nadadors))  # evitar duplicados
+
+    inscribed_nadadors = random.sample(
+        inscribed_nadadors,
+        min(len(inscribed_nadadors), random.randint(10, 30))
+    )
 
     camp_id = f'campionat_{c+1}'
     rec = SubElement(data, 'record', id=camp_id, model='natacio.campionat')
