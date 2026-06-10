@@ -20,11 +20,10 @@ Mòdul per gestionar clubs, categories, nadadors, estils, campionats, sessions i
 
         "security/ir.model.access.csv",
         "views/views.xml",
+        'views/templates.xml',
+        'demo/demo.xml',
     ],
 
-    'demo': [
-    'demo/demo.xml',
-],
 
     'installable': True,
     'application': True,
